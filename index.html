@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Hadson 智能订单系统</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --orange: #E8500A;
+    --orange-light: #FF6B2B;
+    --bg: #FDF8F3;
+    --card: #FFFFFF;
+    --text: #1A1208;
+    --muted: #8A7A6A;
+    --border: #E8DDD0;
+    --success: #2D7A4F;
+    --tag-bg: #FFF0E8;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  header {
+    background: var(--orange);
+    color: white;
+    padding: 16px 20px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  header h1 { font-size: 17px; font-weight: 700; letter-spacing: 0.5px; }
+  header span { font-size: 12px; opacity: 0.85; font-family: 'DM Mono', monospace; }
+
+  .section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+  }
+
+  /* Input modes */
+  .mode-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .mode-tab {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 2px solid var(--border);
+    background: white;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+
+  .mode-tab.active {
+    border-color: var(--orange);
+    color: var(--orange);
+    background: var(--tag-bg);
+  }
+
+  /* Voice panel */
+  #voicePanel { display: block; }
+  #photoPanel { display: none; }
+  #textPanel { display: none; }
+
+  .voice-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: var(--orange);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 16px rgba(232,80,10,0.35);
+  }
+
+  .voice-btn:active, .voice-btn.recording {
+    transform: scale(1.1);
+    box-shadow: 0 6px 24px rgba(232,80,10,0.5);
+  }
+
+  .voice-btn.recording { animation: pulse 1s infinite; }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 4px 16px rgba(232,80,10,0.35); }
+    50% { box-shadow: 0 4px 32px rgba(232,80,10,0.65); }
+  }
+
+  .voice-hint {
+    text-align: center;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .voice-result {
+    background: #F5F0EB;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 14px;
+    min-height: 48px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* Photo panel */
+  .photo-upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .photo-upload-area:hover { border-color: var(--orange); }
+
+  .photo-upload-area input { display: none; }
+  .photo-upload-area p { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+  #previewImg {
+    max-width: 100%;
+    border-radius: 10px;
+    margin-top: 12px;
+    display: none;
+  }
+
+  /* Text panel */
+  textarea {
+    width: 100%;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    resize: none;
+    height: 80px;
+    background: white;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus { border-color: var(--orange); }
+
+  /* Process button */
+  .process-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--orange);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.2s;
+  }
+
+  .process-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .process-btn:not(:disabled):active { opacity: 0.85; }
+
+  /* Loading */
+  .spinner {
+    width: 18px; height: 18px;
+    border: 3px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Order results */
+  #orderSection { display: none; }
+
+  .order-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .order-count {
+    background: var(--orange);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .order-item {
+    background: white;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .sku-badge {
+    background: var(--tag-bg);
+    color: var(--orange);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 8px;
+    min-width: 54px;
+    text-align: center;
+    border: 1px solid rgba(232,80,10,0.2);
+  }
+
+  .item-info { flex: 1; }
+  .item-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+  .item-sub { font-size: 12px; color: var(--muted); }
+
+  .item-qty {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .qty-btn {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: white;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    transition: all 0.15s;
+  }
+
+  .qty-btn:active { background: var(--tag-bg); border-color: var(--orange); }
+
+  .qty-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    font-weight: 500;
+    min-width: 28px;
+    text-align: center;
+  }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #CCC;
+    padding: 4px;
+    transition: color 0.15s;
+  }
+
+  .delete-btn:active { color: #E03; }
+
+  /* Unmatched */
+  .unmatched-item {
+    background: #FFF8F0;
+    border: 1px dashed #F0C090;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #C06020;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Submit */
+  .submit-area {
+    padding: 16px;
+    background: white;
+    border-top: 1px solid var(--border);
+    position: sticky;
+    bottom: 0;
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 15px;
+    background: var(--success);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .submit-btn:active { opacity: 0.85; }
+
+  .total-line {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Success overlay */
+  .success-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    display: none;
+  }
+
+  .success-card {
+    background: white;
+    border-radius: 20px;
+    padding: 32px 28px;
+    text-align: center;
+    max-width: 300px;
+    width: 90%;
+  }
+
+  .success-icon {
+    width: 64px; height: 64px;
+    background: var(--success);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+  }
+
+  .success-card h2 { font-size: 20px; margin-bottom: 8px; }
+  .success-card p { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+
+  .new-order-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--orange);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* Catalog modal */
+  .catalog-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-family: 'Noto Sans SC', sans-serif;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .ai-badge {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<!-- Token setup overlay -->
+<div id="setupOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:28px 24px;max-width:340px;width:90%;">
+    <h2 style="font-size:17px;font-weight:700;margin-bottom:6px;">🔑 首次设置</h2>
+    <p style="font-size:13px;color:#8A7A6A;margin-bottom:16px;line-height:1.6;">请输入 Airtable Personal Access Token，保存后无需再次输入。</p>
+    <input id="tokenInput" type="password" placeholder="patXXXXXX..." style="width:100%;border:2px solid #E8DDD0;border-radius:10px;padding:11px 12px;font-size:13px;font-family:monospace;outline:none;margin-bottom:12px;">
+    <button onclick="saveToken()" style="width:100%;padding:13px;background:#E8500A;color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Sans SC',sans-serif;">保存并连接</button>
+  </div>
+</div>
+
+<header>
+  <div>
+    <h1>🛒 Hadson 智能下单</h1>
+  </div>
+  <span class="ai-badge">AI</span>
+</header>
+
+<div style="background:#FFF8F0;padding:8px 16px;font-size:12px;color:#8A7A6A;border-bottom:1px solid #E8DDD0;" id="catalogStatus">⏳ 正在加载产品库…</div>
+
+<!-- Input Section -->
+<div class="section">
+  <div class="section-title">输入订单需求</div>
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" onclick="switchMode('voice')" id="tab-voice">
+      🎤 语音
+    </button>
+    <button class="mode-tab" onclick="switchMode('photo')" id="tab-photo">
+      📷 拍照
+    </button>
+    <button class="mode-tab" onclick="switchMode('text')" id="tab-text">
+      ✏️ 文字
+    </button>
+  </div>
+
+  <!-- Voice -->
+  <div id="voicePanel">
+    <button class="voice-btn" id="voiceBtn" onclick="toggleVoice()">
+      <svg width="28" height="28" fill="white" viewBox="0 0 24 24">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2H3v2a9 9 0 0 0 8 8.94V23h2v-2.06A9 9 0 0 0 21 12v-2h-2z"/>
+      </svg>
+    </button>
+    <p class="voice-hint" id="voiceHint">按住说出订单，例如：乌龙茶10箱，桃子汽水5箱</p>
+    <div class="voice-result" id="voiceResult">识别结果将显示在此处…</div>
+  </div>
+
+  <!-- Photo -->
+  <div id="photoPanel">
+    <label class="photo-upload-area" for="photoInput">
+      <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="handlePhoto(event)">
+      <svg width="40" height="40" fill="none" stroke="#C0A890" stroke-width="1.5" viewBox="0 0 24 24">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <p>拍摄或上传客户手写订单</p>
+    </label>
+    <img id="previewImg" alt="预览">
+  </div>
+
+  <!-- Text -->
+  <div id="textPanel">
+    <textarea id="textInput" placeholder="直接输入，例如：乌龙茶 10箱、桃子汽水 5箱、零度啤酒 2箱"></textarea>
+  </div>
+
+  <button class="process-btn" id="processBtn" onclick="processOrder()">
+    <div class="spinner" id="spinner"></div>
+    <span id="processBtnText">🔍 AI 匹配产品</span>
+  </button>
+</div>
+
+<!-- Order Results -->
+<div id="orderSection">
+  <div class="section">
+    <div class="order-header">
+      <div class="section-title" style="margin-bottom:0">匹配结果</div>
+      <span class="order-count" id="matchCount">0 件</span>
+    </div>
+    <div id="orderItems"></div>
+    <div id="unmatchedItems"></div>
+  </div>
+
+  <div class="submit-area">
+    <div class="total-line" id="totalLine"></div>
+    <button class="submit-btn" onclick="submitOrder()">
+      ✅ 确认提交订单
+    </button>
+  </div>
+</div>
+
+<!-- Success -->
+<div class="success-overlay" id="successOverlay">
+  <div class="success-card">
+    <div class="success-icon">
+      <svg width="32" height="32" fill="white" viewBox="0 0 24 24">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    </div>
+    <h2>订单已提交！</h2>
+    <p id="successDetail">订单已生成，待仓库处理</p>
+    <button class="new-order-btn" onclick="resetAll()">继续下单</button>
+  </div>
+</div>
+
+<script>
+// ─── Airtable config (stored in localStorage, never in code) ─────────────
+const AT_BASE = "appIrPAlbFLPqEoT";
+let AT_TOKEN  = localStorage.getItem("at_token") || "";
+let AT_TABLE  = "";
+let CATALOG   = [];
+
+// ─── Load catalog from Airtable on page open ──────────────────────────────
+async function loadCatalog() {
+  const statusEl = document.getElementById('catalogStatus');
+  statusEl.textContent = "⏳ 正在加载产品库…";
+
+  try {
+    // 1. Get table list to find the right table
+    const schemaResp = await fetch(`https://api.airtable.com/v0/meta/bases/${AT_BASE}/tables`, {
+      headers: { Authorization: `Bearer ${AT_TOKEN}` }
+    });
+    const schema = await schemaResp.json();
+
+    if (!schema.tables) throw new Error(schema.error?.message || "无法读取表结构");
+
+    // Pick "In Stock Catalog" or first table
+    const table = schema.tables.find(t =>
+      t.name.toLowerCase().includes('stock') ||
+      t.name.toLowerCase().includes('master') ||
+      t.name.toLowerCase().includes('catalog')
+    ) || schema.tables[0];
+
+    AT_TABLE = table.id;
+
+    // 2. Fetch all records (handle pagination)
+    let records = [];
+    let offset = null;
+    do {
+      const url = `https://api.airtable.com/v0/${AT_BASE}/${AT_TABLE}?pageSize=100${offset ? '&offset=' + offset : ''}`;
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${AT_TOKEN}` } });
+      const d = await r.json();
+      if (d.error) throw new Error(d.error.message);
+      records = records.concat(d.records || []);
+      offset = d.offset;
+    } while (offset);
+
+    // 3. Map to CATALOG format — detect field names flexibly
+    CATALOG = records.map(rec => {
+      const f = rec.fields;
+      const keys = Object.keys(f);
+
+      // Find SKU field
+      const skuKey = keys.find(k => /sku|item.?no|item.?id|code/i.test(k)) || keys[0];
+      // Find English name
+      const enKey  = keys.find(k => /english|name.?en|en.?name|product.?name|item.?name/i.test(k));
+      // Find Chinese name
+      const cnKey  = keys.find(k => /chinese|cn|中文|品名|商品/i.test(k));
+      // Find unit/spec
+      const unitKey = keys.find(k => /unit|spec|pack|size|规格/i.test(k));
+
+      const sku    = String(f[skuKey] || '').trim();
+      const nameEn = enKey ? String(f[enKey] || '') : '';
+      const nameCn = cnKey ? String(f[cnKey] || '') : '';
+      const unit   = unitKey ? String(f[unitKey] || '') : '';
+
+      // Build keywords from all text fields
+      const allText = Object.values(f).filter(v => typeof v === 'string').join(' ');
+      const keywords = [...new Set([
+        sku.toLowerCase(),
+        ...nameEn.toLowerCase().split(/\s+/),
+        ...nameCn.split(''),
+        nameCn,
+        nameEn.toLowerCase(),
+      ])].filter(k => k.length > 1);
+
+      return { sku, name: nameCn || nameEn, nameEn, keywords, unit, raw: f };
+    }).filter(p => p.sku);
+
+    statusEl.textContent = `✅ 已加载 ${CATALOG.length} 个产品（来自 ${table.name}）`;
+    statusEl.style.color = '#2D7A4F';
+
+  } catch(err) {
+    console.error(err);
+    statusEl.textContent = `⚠️ 产品库加载失败：${err.message}`;
+    statusEl.style.color = '#C04020';
+    // Keep empty catalog, user can still use manual text
+  }
+}
+
+function saveToken() {
+  const val = document.getElementById('tokenInput').value.trim();
+  if (!val.startsWith('pat')) { alert('Token格式不对，应该以pat开头'); return; }
+  localStorage.setItem('at_token', val);
+  AT_TOKEN = val;
+  document.getElementById('setupOverlay').style.display = 'none';
+  loadCatalog();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (!AT_TOKEN) {
+    document.getElementById('setupOverlay').style.display = 'flex';
+  } else {
+    loadCatalog();
+  }
+});
+
+// ─── Mode switching ────────────────────────────────────────────────────────
+function switchMode(mode) {
+  ['voice','photo','text'].forEach(m => {
+    document.getElementById(`${m}Panel`).style.display = m === mode ? 'block' : 'none';
+    document.getElementById(`tab-${m}`).classList.toggle('active', m === mode);
+  });
+  currentMode = mode;
+}
+let currentMode = 'voice';
+
+// ─── Voice recognition ────────────────────────────────────────────────────
+let recognition = null;
+let isRecording = false;
+
+function toggleVoice() {
+  const btn = document.getElementById('voiceBtn');
+  const hint = document.getElementById('voiceHint');
+  const result = document.getElementById('voiceResult');
+
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    // Fallback demo
+    result.textContent = "乌龙茶10箱，桃子汽水5箱";
+    hint.textContent = "✓ 识别完成（演示模式）";
+    return;
+  }
+
+  if (isRecording) {
+    recognition && recognition.stop();
+    return;
+  }
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'zh-CN';
+  recognition.continuous = false;
+  recognition.interimResults = true;
+
+  recognition.onstart = () => {
+    isRecording = true;
+    btn.classList.add('recording');
+    hint.textContent = "🎙️ 正在录音，说完后松开…";
+    result.textContent = "";
+  };
+
+  recognition.onresult = (e) => {
+    let text = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      text += e.results[i][0].transcript;
+    }
+    result.textContent = text;
+  };
+
+  recognition.onend = () => {
+    isRecording = false;
+    btn.classList.remove('recording');
+    hint.textContent = "识别完成，点击\"AI匹配产品\"";
+  };
+
+  recognition.onerror = () => {
+    isRecording = false;
+    btn.classList.remove('recording');
+    hint.textContent = "识别失败，请重试或切换文字输入";
+  };
+
+  recognition.start();
+}
+
+// ─── Photo handling ───────────────────────────────────────────────────────
+function handlePhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const img = document.getElementById('previewImg');
+  img.src = URL.createObjectURL(file);
+  img.style.display = 'block';
+}
+
+// ─── Get input text ───────────────────────────────────────────────────────
+function getInputText() {
+  if (currentMode === 'voice') return document.getElementById('voiceResult').textContent.trim();
+  if (currentMode === 'text') return document.getElementById('textInput').value.trim();
+  if (currentMode === 'photo') {
+    // Photo: use AI vision via Claude API
+    return '__photo__';
+  }
+  return '';
+}
+
+// ─── Parse order with Claude API ─────────────────────────────────────────
+async function processOrder() {
+  const rawText = getInputText();
+
+  if (currentMode === 'photo') {
+    const file = document.getElementById('photoInput').files[0];
+    if (!file) { alert('请先拍照或选择图片'); return; }
+    await processWithPhoto(file);
+    return;
+  }
+
+  if (!rawText || rawText === '识别结果将显示在此处…') {
+    alert('请先输入订单内容');
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const catalogStr = CATALOG.map(p =>
+      `SKU:${p.sku} 品名:${p.name} 英文:${p.nameEn} 关键词:${p.keywords.join(',')}`
+    ).join('\n');
+
+    const prompt = `你是一个订单匹配助手。根据客户需求，从产品库中匹配SKU和数量。
+
+产品库：
+${catalogStr}
+
+客户需求：「${rawText}」
+
+请返回JSON格式，不要其他内容：
+{
+  "matched": [{"sku":"I004","qty":10}, ...],
+  "unmatched": ["无法识别的商品名"]
+}
+
+规则：
+- 用模糊匹配，"乌龙"匹配乌龙茶，"桃子"匹配桃子汽水
+- 数量从文字中提取，"十箱"=10，"五箱"=5，没有数量默认1
+- 无法匹配的放入unmatched`;
+
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 500,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+
+    const data = await resp.json();
+    const text = data.content.map(i => i.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+    renderOrderResults(result);
+
+  } catch (err) {
+    console.error(err);
+    // Fallback: simple local matching
+    const result = localMatch(rawText);
+    renderOrderResults(result);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function processWithPhoto(file) {
+  setLoading(true);
+
+  try {
+    const base64 = await toBase64(file);
+    const catalogStr = CATALOG.map(p =>
+      `SKU:${p.sku} 品名:${p.name} 关键词:${p.keywords.join(',')}`
+    ).join('\n');
+
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 600,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: file.type, data: base64 } },
+            { type: "text", text: `从图片中识别订单商品和数量，然后与以下产品库匹配：\n${catalogStr}\n\n返回JSON：{"matched":[{"sku":"I004","qty":10}],"unmatched":["无法匹配的"]}\n只返回JSON。` }
+          ]
+        }]
+      })
+    });
+
+    const data = await resp.json();
+    const text = data.content.map(i => i.text || '').join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const result = JSON.parse(clean);
+    renderOrderResults(result);
+
+  } catch(err) {
+    console.error(err);
+    alert('图片识别失败，请尝试文字输入');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// ─── Local fallback matching ──────────────────────────────────────────────
+function localMatch(text) {
+  const matched = [];
+  const unmatched = [];
+  // Split by Chinese/English separators
+  const parts = text.split(/[,，、\n]+/).filter(Boolean);
+
+  parts.forEach(part => {
+    let found = null;
+    let qty = 1;
+
+    // Extract qty
+    const qtyMatch = part.match(/(\d+|一|二|三|四|五|六|七|八|九|十)/);
+    if (qtyMatch) {
+      const m = qtyMatch[1];
+      const map = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10};
+      qty = map[m] || parseInt(m) || 1;
+    }
+
+    for (const p of CATALOG) {
+      if (p.keywords.some(k => part.includes(k))) {
+        found = p.sku;
+        break;
+      }
+    }
+
+    if (found) matched.push({ sku: found, qty });
+    else if (part.trim().length > 0) unmatched.push(part.trim());
+  });
+
+  return { matched, unmatched };
+}
+
+// ─── Render results ───────────────────────────────────────────────────────
+let orderData = [];
+
+function renderOrderResults({ matched, unmatched }) {
+  orderData = matched.map(m => {
+    const product = CATALOG.find(p => p.sku === m.sku);
+    return { ...m, product };
+  });
+
+  const container = document.getElementById('orderItems');
+  const unmatchedContainer = document.getElementById('unmatchedItems');
+  container.innerHTML = '';
+  unmatchedContainer.innerHTML = '';
+
+  orderData.forEach((item, idx) => {
+    if (!item.product) return;
+    container.innerHTML += `
+      <div class="order-item" id="item-${idx}">
+        <div class="sku-badge">${item.sku}</div>
+        <div class="item-info">
+          <div class="item-name">${item.product.name}</div>
+          <div class="item-sub">${item.product.nameEn} · ${item.product.unit}</div>
+        </div>
+        <div class="item-qty">
+          <button class="qty-btn" onclick="changeQty(${idx},-1)">−</button>
+          <span class="qty-num" id="qty-${idx}">${item.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${idx},1)">+</button>
+        </div>
+        <button class="delete-btn" onclick="removeItem(${idx})">✕</button>
+      </div>`;
+  });
+
+  if (unmatched && unmatched.length > 0) {
+    unmatched.forEach(u => {
+      if (!u.trim()) return;
+      unmatchedContainer.innerHTML += `
+        <div class="unmatched-item">⚠️ 无法匹配：「${u}」</div>`;
+    });
+  }
+
+  document.getElementById('matchCount').textContent = `${orderData.length} 件`;
+  updateTotal();
+  document.getElementById('orderSection').style.display = 'block';
+  document.getElementById('orderSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+function changeQty(idx, delta) {
+  orderData[idx].qty = Math.max(1, (orderData[idx].qty || 1) + delta);
+  document.getElementById(`qty-${idx}`).textContent = orderData[idx].qty;
+  updateTotal();
+}
+
+function removeItem(idx) {
+  document.getElementById(`item-${idx}`).remove();
+  orderData[idx] = null;
+  updateTotal();
+}
+
+function updateTotal() {
+  const active = orderData.filter(Boolean);
+  const total = active.reduce((s, i) => s + (i ? i.qty : 0), 0);
+  document.getElementById('totalLine').textContent = `共 ${active.length} 种商品，合计 ${total} 箱`;
+}
+
+// ─── Submit ───────────────────────────────────────────────────────────────
+function submitOrder() {
+  const items = orderData.filter(Boolean);
+  if (!items.length) { alert('订单为空'); return; }
+
+  const detail = items.map(i => `${i.sku} ${i.product.name} × ${i.qty}箱`).join('，');
+  document.getElementById('successDetail').textContent = detail;
+  document.getElementById('successOverlay').style.display = 'flex';
+}
+
+// ─── Reset ────────────────────────────────────────────────────────────────
+function resetAll() {
+  document.getElementById('successOverlay').style.display = 'none';
+  document.getElementById('orderSection').style.display = 'none';
+  document.getElementById('voiceResult').textContent = '识别结果将显示在此处…';
+  document.getElementById('textInput').value = '';
+  document.getElementById('previewImg').style.display = 'none';
+  document.getElementById('photoInput').value = '';
+  document.getElementById('voiceHint').textContent = '按住说出订单，例如：乌龙茶10箱，桃子汽水5箱';
+  orderData = [];
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ─── Loading state ────────────────────────────────────────────────────────
+function setLoading(on) {
+  const btn = document.getElementById('processBtn');
+  const spinner = document.getElementById('spinner');
+  const btnText = document.getElementById('processBtnText');
+  btn.disabled = on;
+  spinner.style.display = on ? 'block' : 'none';
+  btnText.textContent = on ? 'AI 分析中…' : '🔍 AI 匹配产品';
+}
+</script>
+
+</body>
+</html>
