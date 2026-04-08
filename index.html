@@ -448,7 +448,7 @@
   <div>
     <h1>🛒 Hadson 智能下单</h1>
   </div>
-  <span class="ai-badge">AI</span>
+  <button onclick="resetToken()" style="background:rgba(255,255,255,0.2);border:none;color:white;font-size:11px;padding:5px 10px;border-radius:6px;cursor:pointer;font-family:'Noto Sans SC',sans-serif;">🔑 Token</button>
 </header>
 
 <div style="background:#FFF8F0;padding:8px 16px;font-size:12px;color:#8A7A6A;border-bottom:1px solid #E8DDD0;" id="catalogStatus">⏳ 正在加载产品库…</div>
@@ -556,7 +556,7 @@ async function loadCatalog() {
       headers: { Authorization: `Bearer ${AT_TOKEN}` }
     });
     const schema = await schemaResp.json();
-
+    if (!schemaResp.ok) throw new Error(`${schemaResp.status}: ${schema.error?.message || JSON.stringify(schema)}`);
     if (!schema.tables) throw new Error(schema.error?.message || "无法读取表结构");
 
     // Pick "In Stock Catalog" or first table
@@ -621,6 +621,13 @@ async function loadCatalog() {
     statusEl.style.color = '#C04020';
     // Keep empty catalog, user can still use manual text
   }
+}
+
+function resetToken() {
+  localStorage.removeItem('at_token');
+  AT_TOKEN = '';
+  document.getElementById('tokenInput').value = '';
+  document.getElementById('setupOverlay').style.display = 'flex';
 }
 
 function saveToken() {
